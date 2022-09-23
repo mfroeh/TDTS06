@@ -25,7 +25,14 @@ HttpResponse ProxyClient::forward(HttpRequest req) {
   hints.ai_flags = AI_PASSIVE;
 
   int status{};
-  if ((status = getaddrinfo(req.headers["Host"].c_str(), "80", &hints, &res))) {
+
+  // TODO: I don't know why we have to cut this by one more character...
+  // The \n character is discarded by getline and we should be removing the \r
+  // with substring(0, length - 1) in the HttpRequest ctor...
+  if ((status = getaddrinfo(req.headers["Host"]
+                                .substr(0, req.headers["Host"].length() - 1)
+                                .c_str(),
+                            "80", &hints, &res))) {
     cerr << "[ProxyClient] Failed to getaddrinfo for " << req.headers["Host"]
          << endl;
     cerr << gai_strerror(status) << endl;
@@ -57,31 +64,32 @@ HttpResponse ProxyClient::forward(HttpRequest req) {
   cout << "[ProxyClient] Forwarded " << sent_cum << " bytes" << endl;
 
   // Receive response
-  int received_cum{};
   string raw{};
   char buffer[8192];
-  int received{};
-  while ((received = recv(sockfd, buffer, sizeof(buffer), 0)) > 0) {
+  // How much of the body is left to receive
+  int remaining{INT_MAX};
+  while (remaining > 0) {
+    int received{static_cast<int>(recv(sockfd, buffer, sizeof(buffer), 0))};
     raw.append(buffer, received);
 
-    // On first response, check for response code
-    if (received_cum == 0) {
+    // On first received
+    if (remaining == INT_MAX) {
       HttpResponse temp{raw};
-      cout << temp.code << endl;
       // There won't be any content to handle
-      // recv(...) will block until timeout or the connection is closed
       if (temp.code == "304") {
-        received_cum = received;
         break;
-      } else if (temp.code != "200") {
-        received_cum = received;
+      } else if (temp.code == "200") {
+        remaining = stoi(temp.headers["Content-Length"]);
+        remaining -= temp.body.size();
+        continue;
+      } else {
         cout << "[ProxyClient] Received unexpected HttpResponse code "
              << temp.code << " with phrase " << temp.phrase << endl;
         break;
       }
     }
 
-    received_cum += received;
+    remaining -= received;
   }
 
   // Close socket
@@ -90,7 +98,7 @@ HttpResponse ProxyClient::forward(HttpRequest req) {
   } else {
     cout << "[ProxyClient] Closed socket" << endl;
   }
-  cout << "[ProxyClient] Received " << received_cum << " bytes in response"
+  cout << "[ProxyClient] Received " << raw.size() << " bytes in response"
        << endl;
 
   HttpResponse response{raw};
