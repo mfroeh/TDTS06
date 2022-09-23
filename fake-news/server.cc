@@ -84,6 +84,14 @@ void ProxyServer::start() {
     cout << "[ProxyServer] Received HttpRequest from local connection to "
          << req.url << endl;
 
+    // if (req.headers["Host"] != "zebroid.ida.liu.se") {
+    //   cout << "[ProxyServer] Not handeling requests to hosts other than "
+    //           "zebroid.ida.liu.se"
+    //        << endl;
+    //   close(conn_fd);
+    //   continue;
+    // }
+
     ProxyClient client{};
     HttpResponse response = client.forward(req);
     cout << "[ProxyServer] Received HttpResponse from proxy " << endl;

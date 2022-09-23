@@ -33,7 +33,9 @@ HttpRequest::HttpRequest(string str) {
 
   // Read in body
   while (getline(stream, line)) {
-    body.append(line);
+    if (line.length() != 0) {
+      body.append(line);
+    }
   }
 }
 

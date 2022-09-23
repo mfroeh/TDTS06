@@ -46,6 +46,10 @@ HttpResponse ProxyClient::forward(HttpRequest req) {
     return HttpResponse{string{}};
   }
 
+  // Make sure connection is killed after processing
+  // replace_all(req.raw, "keep-alive", "close");
+  // replace_all(req.raw, "Keep-Alive", "close");
+
   // Forward request
   int sent_cum{0};
   int sent_last{0};
@@ -75,8 +79,8 @@ HttpResponse ProxyClient::forward(HttpRequest req) {
         break;
       } else if (temp.code != "200") {
         received_cum = received;
-        cout << "Received unexpected HttpResponse code " << temp.code
-             << " with phrase " << temp.phrase << endl;
+        cout << "[ProxyClient] Received unexpected HttpResponse code "
+             << temp.code << " with phrase " << temp.phrase << endl;
         break;
       }
     }
