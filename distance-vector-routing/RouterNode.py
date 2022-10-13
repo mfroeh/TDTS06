@@ -46,8 +46,10 @@ class RouterNode:
         # Send first update
         self.sendUpdates()
 
+    # Updates our distance vector and informs our neighbors if it changes
     def update(self):
         changed = False
+        # For every node y
         for y in range(N):
             if y == self.ID:
                 continue
@@ -68,9 +70,11 @@ class RouterNode:
                 self.routes[y] = min_route
                 changed = True
 
+        # If one or more entries in our distance vector changed
         if changed:
             self.sendUpdates()
 
+    # On receiving an updated distance vector from a neighbor
     def recvUpdate(self, pkt):
         self.myGUI.println(
             f"[Router {self.ID}] Received distance vector from Router {pkt.sourceid}"
@@ -99,11 +103,14 @@ class RouterNode:
         self.myGUI.println(f"Routes: {self.ID}: {self.routes}")
         self.myGUI.println("-----------------")
 
+    # Sends our updated distance vector to all neighbors
     def sendUpdates(self):
         for v in self.neighbors:
             distance_vector = deepcopy(self.distances[self.ID])
 
+            # If poison reverse was enabled, set the cost of routes going through neighbor v to INFTY
             if self.sim.POISONREVERSE:
+                # For every node y
                 for y in range(N):
                     # Set to infty if we are going through v for y, but v is not the goal node
                     if self.routes[y] == v and y != v:
